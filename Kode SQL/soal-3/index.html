@@ -47,16 +47,14 @@
         <div class="document-ref"><span>NO. DOKUMEN</span><strong id="document-number">-</strong></div>
       </section>
 
-      <section class="auth-strip" id="auth-strip" aria-label="Koneksi database">
-        <div class="connection-state"><span class="connection-dot" id="connection-dot"></span><span id="connection-label">Mode demo lokal</span></div>
-        <form id="auth-form" class="auth-form" hidden>
-          <label class="sr-only" for="auth-email">Email Supabase</label>
-          <input id="auth-email" type="email" autocomplete="username" placeholder="Email akun" required>
-          <label class="sr-only" for="auth-password">Kata sandi Supabase</label>
-          <input id="auth-password" type="password" autocomplete="current-password" placeholder="Kata sandi" required>
-          <button class="button button-small" type="submit" id="auth-submit">Masuk</button>
-        </form>
-        <button class="text-button" id="sign-out" type="button" hidden>Keluar</button>
+      <section class="auth-panel" id="auth-strip" aria-label="Status koneksi Supabase">
+        <div class="auth-panel-heading">
+          <div class="auth-title-group">
+            <span class="auth-kicker">SESI TUGAS</span>
+            <h2 id="auth-title">Akses tanpa password</h2>
+          </div>
+          <div class="connection-state"><span class="connection-dot" id="connection-dot"></span><span id="connection-label">Mode demo lokal</span></div>
+        </div>
       </section>
 
       <form id="voucher-form" novalidate>

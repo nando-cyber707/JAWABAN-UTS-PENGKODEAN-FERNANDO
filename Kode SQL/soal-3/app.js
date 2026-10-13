@@ -6,13 +6,8 @@ const DEFAULT_ACCOUNTS = [
 ];
 
 const STORAGE_KEY = 'diponegoro-cash-vouchers-v1';
-const state = { accounts: DEFAULT_ACCOUNTS, supabase: null, session: null, online: false, busy: false };
+const state = { accounts: DEFAULT_ACCOUNTS, supabase: null, session: null, online: false, busy: false, connectionError: null };
 const elements = {
-  authForm: document.querySelector('#auth-form'),
-  authEmail: document.querySelector('#auth-email'),
-  authPassword: document.querySelector('#auth-password'),
-  authSubmit: document.querySelector('#auth-submit'),
-  signOut: document.querySelector('#sign-out'),
   userLabel: document.querySelector('#user-label'),
   connectionDot: document.querySelector('#connection-dot'),
   connectionLabel: document.querySelector('#connection-label'),
@@ -124,7 +119,8 @@ function recalculate() {
   elements.balanceSymbol.textContent = balanced ? '\u2713' : '!';
   elements.balanceTitle.textContent = balanced ? 'Seimbang' : 'Belum seimbang';
   elements.balanceDetail.textContent = balanced ? 'Debit sama dengan kredit' : 'Total debit dan kredit harus sama';
-  elements.submitButton.disabled = !balanced || !headerValid || state.busy;
+  const sessionReady = !state.online || Boolean(state.session && !state.connectionError);
+  elements.submitButton.disabled = !balanced || !headerValid || state.busy || !sessionReady;
   return { lines, debit, credit, balanced };
 }
 
@@ -239,10 +235,15 @@ async function loadOnlineVouchers() {
 
 function refreshAuthUi() {
   const signedIn = Boolean(state.session?.user);
-  elements.authForm.hidden = !state.online || signedIn;
-  elements.signOut.hidden = !signedIn;
-  elements.userLabel.textContent = signedIn ? state.session.user.email : (state.online ? 'Belum masuk' : 'Demo lokal');
-  setConnection(state.online ? (signedIn ? 'connected' : 'offline') : 'demo', state.online ? (signedIn ? 'Terhubung ke Supabase' : 'Supabase siap, perlu masuk') : 'Mode demo lokal');
+  elements.userLabel.textContent = signedIn
+    ? (state.session.user.is_anonymous ? 'Sesi tugas' : (state.session.user.email || 'Sesi aktif'))
+    : (state.online ? 'Menghubungkan sesi' : 'Demo lokal');
+  setConnection(
+    state.online ? (signedIn && !state.connectionError ? 'connected' : 'offline') : 'demo',
+    state.online
+      ? (state.connectionError ? 'Sesi anonim gagal' : (signedIn ? 'Supabase terhubung · sesi tanpa password' : 'Membuat sesi tanpa password'))
+      : 'Mode demo lokal'
+  );
   if (!state.online) renderRecent(storedVouchers());
   else if (!signedIn) renderRecent([]);
 }
@@ -250,20 +251,22 @@ function refreshAuthUi() {
 async function initializeSupabase() {
   const config = window.SUPABASE_CONFIG || {};
   if (!config.url || !config.anonKey) {
-    elements.authForm.hidden = true;
-    elements.signOut.hidden = true;
     refreshAuthUi();
     return;
   }
   state.online = true;
-  setConnection('offline', 'Menghubungkan ke Supabase');
-  elements.authForm.hidden = false;
+  setConnection('offline', 'Membuat sesi tanpa password');
   try {
     const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
     state.supabase = createClient(config.url, config.anonKey);
     const { data, error } = await state.supabase.auth.getSession();
     if (error) throw error;
     state.session = data.session;
+    if (!state.session) {
+      const { data: anonymousData, error: anonymousError } = await state.supabase.auth.signInAnonymously();
+      if (anonymousError) throw anonymousError;
+      state.session = anonymousData.session;
+    }
     state.supabase.auth.onAuthStateChange((_event, session) => {
       state.session = session;
       refreshAuthUi();
@@ -293,12 +296,11 @@ async function initializeSupabase() {
       await loadOnlineVouchers();
     }
   } catch (error) {
-    state.online = false;
-    state.supabase = null;
-    elements.authForm.hidden = true;
+    state.connectionError = error.message;
     refreshAuthUi();
-    setConnection('offline', 'Koneksi Supabase gagal');
-    showToast(`Koneksi database gagal: ${error.message}`, true);
+    setConnection('offline', 'Aktifkan anonymous sign-ins di Supabase Auth');
+    elements.submitButton.disabled = true;
+    showToast(`Sesi tanpa password belum aktif: ${error.message}`, true);
   }
 }
 
@@ -346,26 +348,6 @@ elements.voucherForm.addEventListener('submit', async event => {
     elements.submitLabel.textContent = 'Posting voucher';
     recalculate();
   }
-});
-
-elements.authForm.addEventListener('submit', async event => {
-  event.preventDefault();
-  if (!state.supabase) return;
-  elements.authSubmit.disabled = true;
-  elements.authSubmit.textContent = 'Memeriksa...';
-  const { error } = await state.supabase.auth.signInWithPassword({
-    email: elements.authEmail.value.trim(),
-    password: elements.authPassword.value
-  });
-  elements.authSubmit.disabled = false;
-  elements.authSubmit.textContent = 'Masuk';
-  if (error) showToast(error.message, true);
-  else elements.authPassword.value = '';
-});
-
-elements.signOut.addEventListener('click', async () => {
-  const { error } = await state.supabase.auth.signOut();
-  if (error) showToast(error.message, true);
 });
 
 elements.voucherNumber.value = makeVoucherNumber();

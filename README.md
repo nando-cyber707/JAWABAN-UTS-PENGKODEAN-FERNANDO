@@ -75,15 +75,17 @@ Naskah soal 2 tidak memberikan tabel jurnal, pemetaan akun, kas/utang yang digun
 
 ## Soal 3: Voucher Kas Keluar
 
-Prototype web berada di `Kode SQL/soal-3/`. Jalankan server statis dari folder tersebut (Node.js dan koneksi internet diperlukan untuk perintah `npx`):
+**Web publik:** [Voucher Kas Keluar](https://nando-cyber707.github.io/JAWABAN-UTS-PENGKODEAN-FERNANDO/). GitHub Actions menerbitkan isi `Kode SQL/soal-3/` setiap ada push ke branch `main`.
+
+Prototype web berada di `Kode SQL/soal-3/`. Untuk menjalankan salinan lokal, gunakan server statis dari folder tersebut (Node.js dan koneksi internet diperlukan untuk perintah `npx`):
 
 ```powershell
 npx.cmd --yes http-server -p 5173
 ```
 
-Buka `http://localhost:5173`. Tanpa konfigurasi, aplikasi berfungsi dalam mode demo dan menyimpan data pada `localStorage`; mode ini bukan penyimpanan audit yang aman. Hash di mode demo hanya demonstrasi, bukan kontrol integritas server.
+Buka `http://localhost:5173`. Jika konfigurasi Supabase kosong, aplikasi masuk mode demo `localStorage`; mode ini hanya untuk demonstrasi dan bukan penyimpanan audit server.
 
-`supabase-config.js` telah diisi dengan URL project dan publishable key yang diberikan. Publishable key memang dirancang untuk dipakai di browser; keamanan data tetap bergantung pada RLS. Jangan pernah menaruh `service_role` key di frontend. Sebelum posting aktif, jalankan `Kode SQL/soal-3/schema.sql` melalui SQL Editor pada project Supabase dan buat pengguna melalui Supabase Auth. Pengguna harus login sebelum RPC `submit_cash_voucher` dapat memposting voucher. RLS membatasi pembacaan ke data milik pengguna dan penulisan langsung ditolak; RPC membuat header/baris dan mempostingnya secara atomik.
+`supabase-config.js` telah diisi dengan URL project dan publishable key. Provider anonymous sign-in Supabase diaktifkan; aplikasi otomatis membuat sesi tugas tanpa email atau password. Publishable key memang dirancang untuk dipakai di browser; keamanan data tetap bergantung pada RLS. Jangan pernah menaruh `service_role` key di frontend. Schema sudah diterapkan pada project Supabase. RLS membatasi pembacaan ke data milik sesi anonim dan penulisan langsung ditolak; RPC membuat header/baris dan mempostingnya secara atomik. Anonymous sign-ins dapat memerlukan captcha/rate limiting sebelum penggunaan publik berskala produksi.
 
 UI menghitung debit/kredit dalam sen, menampilkan selisih live, dan menonaktifkan tombol posting sampai header terisi, setidaknya dua baris valid, serta total seimbang. Backend mengulang pemeriksaan saldo. Saat posting, checksum SHA-256 dihitung dari payload header dan baris terurut. Field `created_by`, `created_at`, `posted_at`, `hash_checksum`, serta audit snapshot dicatat di database. Voucher dan baris POSTED dibuat immutable; koreksi dilakukan dengan voucher baru yang mengacu voucher asal dan harus membalik akun/nilai baris secara tepat.
 
@@ -93,4 +95,4 @@ Prompt Gemini Canvas dan NotebookLM tersedia di folder `Prompt/`. Prompt Noteboo
 
 ## Catatan Validasi
 
-Pemeriksaan statis atas deklarasi tabel, trigger, field audit, dan sintaks JavaScript dilakukan selama penyusunan. PostgreSQL/Supabase belum tersedia di workspace untuk menjalankan seluruh DDL atau pengujian database end-to-end. Mode demo web dapat dicoba melalui server lokal; koneksi cloud memerlukan kredensial project dan akun Supabase Anda.
+Pemeriksaan statis atas deklarasi tabel, trigger, field audit, dan sintaks JavaScript dilakukan selama penyusunan. Schema soal 3 berhasil dijalankan pada Supabase dan tabel diverifikasi melalui REST API. Skenario SQL soal 1 dan 2 belum dijalankan pada PostgreSQL. UI diuji pada desktop/ponsel serta sesi anonim Supabase; posting voucher produksi tidak diuji dengan transaksi nyata.
