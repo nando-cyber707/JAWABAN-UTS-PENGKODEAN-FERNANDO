@@ -11,6 +11,10 @@ CREATE TABLE IF NOT EXISTS chart_of_accounts (
     is_active BOOLEAN NOT NULL DEFAULT TRUE
 );
 
+-- Kompatibel dengan chart_of_accounts soal 1 jika tabel tersebut sudah ada.
+ALTER TABLE chart_of_accounts
+    ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
+
 CREATE TABLE IF NOT EXISTS cash_vouchers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     voucher_number TEXT NOT NULL UNIQUE,
